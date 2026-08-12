@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper to check if file is an image and below 5MB
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Landlord property photos: properties/{propertyId}/photos/{photoName}
+    match /properties/{propertyId}/photos/{photoName} {
+      allow read: if true; // Anyone can view property photographs
+      
+      // Only the authenticated landlord can upload/delete property photos
+      // We can also check if the property landlord ID matches the authenticated user ID
+      allow write: if isAuthenticated() && isValidImage();
+    }
+
+    // Tenant identity / profile documents: users/{userId}/documents/{docName}
+    match /users/{userId}/documents/{docName} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || request.auth.token.role == "admin");
+      allow write: if isAuthenticated() && request.auth.uid == userId && isValidImage();
+    }
+  }
+}

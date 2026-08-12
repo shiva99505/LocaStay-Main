@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a user profile on LocaStay",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID from Firebase Auth" },
+        "name": { "type": "string", "description": "User's full name" },
+        "phone": { "type": "string", "description": "User's phone number" },
+        "email": { "type": "string", "description": "User's email address" },
+        "role": { "type": "string", "enum": ["tenant", "landlord", "admin"], "description": "User role" },
+        "isVerified": { "type": "boolean", "description": "Whether the landlord is verified by admin" },
+        "isSuspended": { "type": "boolean", "description": "Whether the user is suspended" },
+        "createdAt": { "type": "string", "description": "Account creation timestamp" },
+        "profilePhotoUrl": { "type": "string", "description": "Profile picture URL" }
+      },
+      "required": ["uid", "name", "phone", "email", "role", "isVerified", "createdAt"]
+    },
+    "Property": {
+      "title": "Property",
+      "description": "Represents a rental property listed by a landlord",
+      "type": "object",
+      "properties": {
+        "propertyId": { "type": "string", "description": "Unique property ID" },
+        "landlordId": { "type": "string", "description": "User ID of the listing landlord" },
+        "title": { "type": "string", "description": "Property listing title" },
+        "description": { "type": "string", "description": "Property detailed description" },
+        "type": { "type": "string", "enum": ["house", "hostel", "room", "shop"], "description": "Property category" },
+        "address": { "type": "string", "description": "Physical address" },
+        "city": { "type": "string", "description": "City of property" },
+        "state": { "type": "string", "description": "State of property" },
+        "pincode": { "type": "string", "description": "6-digit area PIN code" },
+        "latitude": { "type": "number", "description": "GPS latitude" },
+        "longitude": { "type": "number", "description": "GPS longitude" },
+        "rentAmount": { "type": "number", "description": "Monthly rent in INR" },
+        "depositAmount": { "type": "number", "description": "Security deposit in INR" },
+        "amenities": { "type": "array", "description": "List of amenities (e.g., Wifi, water, power, parking)" },
+        "photos": { "type": "array", "description": "Array of image URLs stored in Firebase Storage" },
+        "distanceFromLandmarks": { "type": "array", "description": "Array of landmarks like distance from bus stand" },
+        "status": { "type": "string", "enum": ["available", "rented", "hidden"], "description": "Current listing state" },
+        "isFeatured": { "type": "boolean", "description": "Whether listing is featured (premium rank)" },
+        "isVerified": { "type": "boolean", "description": "Whether property has been verified by Admin" },
+        "scanCount": { "type": "number", "description": "QR scan tracking count" },
+        "viewCount": { "type": "number", "description": "View tracking count" },
+        "createdAt": { "type": "string", "description": "Timestamp of creation" },
+        "updatedAt": { "type": "string", "description": "Timestamp of last edit" }
+      },
+      "required": ["propertyId", "landlordId", "title", "type", "address", "city", "state", "pincode", "rentAmount", "depositAmount", "status", "isFeatured", "isVerified", "createdAt"]
+    },
+    "BookingRequest": {
+      "title": "BookingRequest",
+      "description": "Represents a booking request submitted by a tenant",
+      "type": "object",
+      "properties": {
+        "requestId": { "type": "string", "description": "Unique booking request ID" },
+        "propertyId": { "type": "string", "description": "ID of the target property" },
+        "tenantId": { "type": "string", "description": "ID of the requesting tenant" },
+        "landlordId": { "type": "string", "description": "ID of the listing landlord" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"], "description": "Status of request" },
+        "unlockedContact": { "type": "boolean", "description": "Whether tenant has unlocked landlord's contact details" },
+        "paymentId": { "type": "string", "description": "Razorpay transaction reference if unlocked" },
+        "createdAt": { "type": "string", "description": "Timestamp of submission" }
+      },
+      "required": ["requestId", "propertyId", "tenantId", "landlordId", "status", "unlockedContact", "createdAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Represents a successful payment transaction on LocaStay",
+      "type": "object",
+      "properties": {
+        "paymentId": { "type": "string", "description": "Unique LocaStay transaction reference ID" },
+        "userId": { "type": "string", "description": "ID of the user making the payment" },
+        "type": { "type": "string", "enum": ["contact_unlock", "landlord_subscription", "featured_listing"], "description": "Purpose of transaction" },
+        "amount": { "type": "number", "description": "Transaction amount in INR" },
+        "razorpayOrderId": { "type": "string", "description": "Razorpay order reference" },
+        "razorpayPaymentId": { "type": "string", "description": "Razorpay payment receipt ID" },
+        "status": { "type": "string", "enum": ["success", "failed", "pending"], "description": "Payment status" },
+        "relatedPropertyId": { "type": "string", "description": "ID of the target property if applicable" },
+        "createdAt": { "type": "string", "description": "Payment timestamp" }
+      },
+      "required": ["paymentId", "userId", "type", "amount", "status", "createdAt"]
+    },
+    "RentRecord": {
+      "title": "RentRecord",
+      "description": "Represents a monthly rent schedule/record",
+      "type": "object",
+      "properties": {
+        "rentId": { "type": "string", "description": "Unique rent record ID" },
+        "propertyId": { "type": "string", "description": "Property ID" },
+        "tenantId": { "type": "string", "description": "Tenant ID" },
+        "landlordId": { "type": "string", "description": "Landlord ID" },
+        "monthYear": { "type": "string", "description": "Billing period, e.g., 'August 2026'" },
+        "dueDate": { "type": "string", "description": "Payment due date" },
+        "amountDue": { "type": "number", "description": "Amount due in INR" },
+        "status": { "type": "string", "enum": ["pending", "paid", "overdue"], "description": "Billing status" },
+        "paidAt": { "type": "string", "description": "Date rent was finalized as paid" },
+        "receiptUrl": { "type": "string", "description": "Generated PDF receipt storage link" }
+      },
+      "required": ["rentId", "propertyId", "tenantId", "landlordId", "monthYear", "dueDate", "amountDue", "status"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Represents a landlord's plan subscription",
+      "type": "object",
+      "properties": {
+        "subscriptionId": { "type": "string", "description": "Unique subscription ID" },
+        "landlordId": { "type": "string", "description": "Landlord ID" },
+        "plan": { "type": "string", "enum": ["basic_49", "featured_99"], "description": "Subscribed plan tier" },
+        "startDate": { "type": "string", "description": "Start timestamp" },
+        "endDate": { "type": "string", "description": "End timestamp" },
+        "status": { "type": "string", "enum": ["active", "expired"], "description": "Plan status" },
+        "razorpayPaymentId": { "type": "string", "description": "Razorpay payment receipt reference" }
+      },
+      "required": ["subscriptionId", "landlordId", "plan", "startDate", "endDate", "status"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Represents rating and comment reviews",
+      "type": "object",
+      "properties": {
+        "reviewId": { "type": "string", "description": "Unique review ID" },
+        "targetId": { "type": "string", "description": "ID of the reviewed entity (property, tenant, or landlord)" },
+        "reviewerId": { "type": "string", "description": "ID of the user writing the review" },
+        "rating": { "type": "number", "description": "Rating score between 1 and 5" },
+        "comment": { "type": "string", "description": "Review comment text" },
+        "createdAt": { "type": "string", "description": "Review creation timestamp" }
+      },
+      "required": ["reviewId", "targetId", "reviewerId", "rating", "comment", "createdAt"]
+    },
+    "AdminAction": {
+      "title": "AdminAction",
+      "description": "Logs sensitive administrative activities for auditing",
+      "type": "object",
+      "properties": {
+        "actionId": { "type": "string", "description": "Unique log entry ID" },
+        "adminId": { "type": "string", "description": "ID of executing admin" },
+        "action": { "type": "string", "description": "Description of action (e.g. Verify Landlord, Suspend User)" },
+        "targetId": { "type": "string", "description": "ID of the user, property, or document affected" },
+        "timestamp": { "type": "string", "description": "Timestamp of action execution" }
+      },
+      "required": ["actionId", "adminId", "action", "targetId", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Represents an in-app system notification for tenants and landlords",
+      "type": "object",
+      "properties": {
+        "notificationId": { "type": "string", "description": "Unique notification reference" },
+        "userId": { "type": "string", "description": "ID of user receiving the notification" },
+        "title": { "type": "string", "description": "Notification header" },
+        "body": { "type": "string", "description": "Detailed text content" },
+        "type": { "type": "string", "description": "Category (e.g., rent_due, booking_request, receipt)" },
+        "isRead": { "type": "boolean", "description": "Whether the user read this notification" },
+        "createdAt": { "type": "string", "description": "Timestamp of generation" }
+      },
+      "required": ["notificationId", "userId", "title", "body", "type", "isRead", "createdAt"]
+    },
+    "SavedLocation": {
+      "title": "SavedLocation",
+      "description": "Represents a bookmarked location pin by a tenant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique saved document ID" },
+        "tenantId": { "type": "string", "description": "ID of tenant who saved the location pin" },
+        "propertyId": { "type": "string", "description": "Target property ID" },
+        "title": { "type": "string", "description": "Property title" },
+        "address": { "type": "string", "description": "Property address" },
+        "city": { "type": "string", "description": "City name" },
+        "latitude": { "type": "number", "description": "Latitude" },
+        "longitude": { "type": "number", "description": "Longitude" },
+        "rentAmount": { "type": "number", "description": "Rent amount in INR" },
+        "photoUrl": { "type": "string", "description": "Thumbnail photo URL" },
+        "savedAt": { "type": "string", "description": "Saved timestamp" }
+      },
+      "required": ["id", "tenantId", "propertyId", "title", "address", "latitude", "longitude", "savedAt"]
+    }
+  },
+  "firestore": {
+    "users": { "schema": { "$ref": "#/entities/User" }, "description": "LocaStay registered user details" },
+    "properties": { "schema": { "$ref": "#/entities/Property" }, "description": "Available rental properties catalog" },
+    "bookingRequests": { "schema": { "$ref": "#/entities/BookingRequest" }, "description": "Property unlock & booking contact submission catalog" },
+    "payments": { "schema": { "$ref": "#/entities/Payment" }, "description": "Completed platform subscription and transaction records" },
+    "rentRecords": { "schema": { "$ref": "#/entities/RentRecord" }, "description": "Rent tracking schedules, statuses, and receipt URLs" },
+    "subscriptions": { "schema": { "$ref": "#/entities/Subscription" }, "description": "Landlord subscription purchase logs" },
+    "reviews": { "schema": { "$ref": "#/entities/Review" }, "description": "User & listing ratings" },
+    "adminActions": { "schema": { "$ref": "#/entities/AdminAction" }, "description": "Security compliance logs for administrative modifications" },
+    "notifications": { "schema": { "$ref": "#/entities/Notification" }, "description": "In-app alert logs" },
+    "savedLocations": { "schema": { "$ref": "#/entities/SavedLocation" }, "description": "Tenant bookmarked property pins" }
+  }
+}

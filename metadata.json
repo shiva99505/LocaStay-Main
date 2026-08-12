@@ -1,0 +1,8 @@
+{
+  "name": "LocaStay",
+  "description": "Production rental platform for Tier 3/4 Indian cities, powered by Firebase Firestore, role-based controls, automated rent tracking, and secure Razorpay payment integration.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

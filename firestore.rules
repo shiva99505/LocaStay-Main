@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isServer() {
+      return isAuthenticated() && request.auth.token.email == "server-backend@locastay.com";
+    }
+
+    // Global bypass for secure backend server session
+    match /{document=**} {
+      allow read, write: if isServer();
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // Allowed so tenants and landlords can identify each other
+      allow create: if isOwner(userId) 
+        && !("role" in request.resource.data && request.resource.data.role == "admin")
+        && (!("isVerified" in request.resource.data) || request.resource.data.isVerified == false);
+      allow update: if isOwner(userId)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isVerified']));
+      allow delete: if false; // Admin only / No client deletion
+    }
+
+    // 2. Properties Collection
+    match /properties/{propertyId} {
+      allow read: if true; // Anyone can browse properties
+      allow create: if isAuthenticated() 
+        && request.resource.data.landlordId == request.auth.uid
+        && (!("isVerified" in request.resource.data) || request.resource.data.isVerified == false)
+        && (!("isFeatured" in request.resource.data) || request.resource.data.isFeatured == false);
+      allow update: if isAuthenticated() 
+        && resource.data.landlordId == request.auth.uid
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isVerified', 'isFeatured', 'featuredUntil', 'scanCount', 'viewCount']));
+      allow delete: if isAuthenticated() && resource.data.landlordId == request.auth.uid;
+    }
+
+    // 3. Booking Requests Collection
+    match /bookingRequests/{requestId} {
+      allow read: if isAuthenticated() 
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow create: if isAuthenticated() 
+        && request.resource.data.tenantId == request.auth.uid
+        && (!("unlockedContact" in request.resource.data) || request.resource.data.unlockedContact == false);
+      allow update: if isAuthenticated() 
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['unlockedContact']));
+      allow delete: if isAuthenticated() && resource.data.tenantId == request.auth.uid;
+    }
+
+    // 4. Payments Collection (Handled exclusively server-side via Razorpay Webhooks)
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if false; // Completely locked from client-side writes
+    }
+
+    // 5. Rent Records Collection
+    match /rentRecords/{recordId} {
+      allow read: if isAuthenticated() 
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow create: if isAuthenticated() 
+        && request.resource.data.landlordId == request.auth.uid;
+      allow update: if isAuthenticated() 
+        && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid)
+        && (
+          // Landlord can edit anything
+          request.auth.uid == resource.data.landlordId 
+          || (
+            // Tenant can only self-report payment, cannot set status to 'paid'
+            request.auth.uid == resource.data.tenantId
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) || request.resource.data.status != 'paid')
+          )
+        );
+      allow delete: if isAuthenticated() && resource.data.landlordId == request.auth.uid;
+    }
+
+    // 6. Subscriptions Collection (Read-only for owner, handled server-side)
+    match /subscriptions/{subscriptionId} {
+      allow read: if isAuthenticated() && resource.data.landlordId == request.auth.uid;
+      allow write: if false; // Only server-side subscription provisioning
+    }
+
+    // 7. Notifications Collection (Users can mark their own as read)
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if false; // Dispatched exclusively via server-side createNotification
+      allow update: if isAuthenticated() 
+        && resource.data.userId == request.auth.uid
+        // Only allow updating read / isRead state
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['notificationId', 'userId', 'title', 'body', 'type', 'createdAt', 'actionUrl']));
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // 8. Logs and Outboxes (Real-time logs, read-only for diagnostic purposes where applicable)
+    match /whatsapp_outbox/{logId} {
+      allow read: if isAuthenticated() && request.auth.uid != null;
+      allow write: if false;
+    }
+    match /fcm_outbox/{logId} {
+      allow read: if isAuthenticated() && request.auth.uid != null;
+      allow write: if false;
+    }
+
+    // 9. Saved Locations Collection (Tenant bookmarked location pins)
+    match /savedLocations/{savedId} {
+      allow get: if isAuthenticated() && (resource == null || resource.data.tenantId == request.auth.uid);
+      allow list: if isAuthenticated() && resource.data.tenantId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.tenantId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.tenantId == request.auth.uid;
+    }
+  }
+}
